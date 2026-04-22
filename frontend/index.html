@@ -764,7 +764,7 @@ async function fetchAssessment(profile, path) {
 
   lastApiCall = now;
 
-  const res = await fetch("http://localhost:8000/assess", {
+  const res = await fetch("https://geoguardian-v3-production.up.railway.app/assess", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({
@@ -1280,9 +1280,9 @@ window.addEventListener('resize',()=>{drawMap();drawTimeline();});
 function startDataSync() {
   setInterval(async () => {
     try {
-      const clusters = await fetch("http://localhost:8000/clusters").then(r => r.json());
-      const heatmap  = await fetch("http://localhost:8000/heatmap").then(r => r.json());
-      const stats    = await fetch("http://localhost:8000/session/stats").then(r => r.json());
+      const clusters = await fetch("https://geoguardian-v3-production.up.railway.app/clusters").then(r => r.json());
+      const heatmap  = await fetch("https://geoguardian-v3-production.up.railway.app/heatmap").then(r => r.json());
+      const stats    = await fetch("https://geoguardian-v3-production.up.railway.app/session/stats").then(r => r.json());
 
       // ================= APPLY DATA =================
 
