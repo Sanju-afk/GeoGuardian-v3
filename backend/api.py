@@ -23,7 +23,6 @@ from geoguardian_v2 import GeoGuardian, TouristProfile, GPSPoint
 from geoguardian_v3_backend import (
     SessionStore, SpatialClusterEngine, format_explanation,
 )
-
 # ── Application setup ─────────────────────────────────────────────────────────
 
 app = FastAPI(title="GeoGuardian API", version="3.0.0",
@@ -182,7 +181,14 @@ def clusters():
         ]
       }
     """
-    return {"clusters": clusterer.cluster(store)}
+    try:
+        result = clusterer.cluster(store)
+        return {"clusters": result}
+    except Exception as e:
+        import traceback
+        print("CLUSTERS ERROR:", str(e))
+        traceback.print_exc()
+        return {"error": str(e)}
 
 
 @app.get("/session/stats", summary="Overall session statistics")
