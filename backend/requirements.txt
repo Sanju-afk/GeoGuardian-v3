@@ -1,0 +1,18 @@
+fastapi
+uvicorn
+
+numpy
+pandas
+scikit-learn
+joblib
+
+tensorflow-cpu
+
+pydantic
+
+python-multipart
+
+# optional but useful
+
+matplotlib
+

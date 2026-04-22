@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoGuardian — AI Tourist Safety Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#05080f;--bg1:#0c1220;--bg2:#111928;--bg3:#0a0f1c;
+  --border:#1e2d45;--border2:#263a55;
+  --text:#e2e8f0;--muted:#64748b;--muted2:#94a3b8;
+  --cyan:#06b6d4;--cyan2:#0891b2;--cyan-dim:rgba(6,182,212,.12);
+  --green:#10b981;--green-dim:rgba(16,185,129,.12);
+  --amber:#f59e0b;--amber-dim:rgba(245,158,11,.12);
+  --red:#ef4444;--red-dim:rgba(239,68,68,.12);
+  --purple:#8b5cf6;--purple-dim:rgba(139,92,246,.12);
+  --indigo:#6366f1;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'Exo 2',sans-serif;font-size:14px}
+
+/* ===== HEADER ===== */
+header{
+  height:52px;display:flex;align-items:center;padding:0 18px;gap:12px;
+  background:var(--bg1);border-bottom:1px solid var(--border);
+  position:relative;z-index:10;
+}
+.logo{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;
+  letter-spacing:4px;color:var(--cyan)}
+.logo b{color:var(--text);font-weight:400}
+.version{font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--muted);letter-spacing:1px;border:1px solid var(--border);
+  border-radius:3px;padding:2px 6px}
+.hstatus{display:flex;align-items:center;gap:7px;
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--muted)}
+.hpulse{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.hpulse.ok{animation:pgn 2s infinite}
+.hpulse.warn{background:var(--amber);animation:pgn 1s infinite}
+.hpulse.alert{background:var(--red);animation:pgr .7s infinite}
+@keyframes pgn{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.5)}50%{box-shadow:0 0 0 5px rgba(16,185,129,0)}}
+@keyframes pgr{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.7)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+.hright{margin-left:auto;display:flex;align-items:center;gap:10px}
+.hloc{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px}
+.htime{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyan)}
+/* ── NEW: session stats chip ── */
+.sess-chip{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);
+  border:1px solid var(--border);border-radius:3px;padding:2px 8px;letter-spacing:.5px}
+.sess-chip b{color:var(--muted2)}
+.sosbtn{padding:6px 14px;border:1px solid var(--red);border-radius:3px;
+  background:transparent;color:var(--red);font-family:'Rajdhani',sans-serif;
+  font-weight:700;font-size:13px;letter-spacing:2px;cursor:pointer;transition:.2s}
+.sosbtn:hover,.sosbtn.fired{background:var(--red);color:#fff}
+.sosbtn.fired{animation:sosblink .6s infinite}
+@keyframes sosblink{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ===== LAYOUT ===== */
+.main{display:grid;grid-template-columns:268px 1fr 288px;height:calc(100vh - 52px - 128px)}
+.foot{height:128px;border-top:1px solid var(--border);background:var(--bg1);display:flex;flex-direction:column;padding:10px 16px 8px;gap:6px}
+
+/* ===== PANELS ===== */
+.panel{background:var(--bg1);border-right:1px solid var(--border);overflow-y:auto;
+  padding:14px;display:flex;flex-direction:column;gap:11px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.panel.right{border-right:none;border-left:1px solid var(--border)}
+.ptitle{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;
+  letter-spacing:3px;color:var(--muted);padding-bottom:8px;border-bottom:1px solid var(--border)}
+
+/* ===== FORM ===== */
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:1.5px}
+.fg input,.fg select{background:var(--bg2);border:1px solid var(--border);border-radius:3px;
+  color:var(--text);padding:6px 9px;font-family:'Share Tech Mono',monospace;font-size:12px;
+  outline:none;transition:border-color .2s;width:100%}
+.fg input:focus,.fg select:focus{border-color:var(--cyan)}
+.fg select option{background:var(--bg2)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* ===== RISK DISPLAY ===== */
+.riskbox{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:13px;text-align:center}
+.riskbox.big{padding:16px;border-color:var(--border2)}
+.rlabel{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px}
+.rval{font-family:'Rajdhani',sans-serif;font-size:44px;font-weight:700;line-height:1}
+.rval.lg{font-size:54px}
+.rbadge{display:inline-block;margin-top:5px;padding:2px 10px;border-radius:3px;
+  font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;letter-spacing:2px}
+
+/* ===== SCORE BARS ===== */
+.sbrow{display:flex;flex-direction:column;gap:4px}
+.sblabels{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:10px}
+.sbtrack{height:5px;background:var(--bg2);border-radius:3px;overflow:hidden}
+.sbfill{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* ===== CONFIDENCE DISPLAY (NEW) ===== */
+.conf-box{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:11px 13px}
+.conf-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.conf-title{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted)}
+.conf-badge{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;
+  padding:2px 9px;border-radius:3px;letter-spacing:1px}
+.conf-pct{font-family:'Rajdhani',sans-serif;font-size:32px;font-weight:700;
+  text-align:center;line-height:1;margin-bottom:6px}
+.conf-desc{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted);
+  text-align:center;letter-spacing:.5px;margin-bottom:8px}
+.conf-track{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.conf-fill{height:100%;border-radius:2px;transition:width .5s ease}
+
+/* ===== AI EXPLANATION (NEW) ===== */
+.explain-box{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:11px 13px}
+.explain-summary{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted2);
+  line-height:1.65;margin-bottom:10px;min-height:30px}
+.explain-factor{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.ef-rank{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:700;
+  color:var(--muted);width:14px;flex-shrink:0;text-align:center}
+.ef-label{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted2);
+  flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ef-track{width:52px;height:3px;background:var(--bg3);border-radius:2px;flex-shrink:0}
+.ef-bar{height:100%;border-radius:2px;transition:width .4s ease}
+.ef-val{font-family:'Share Tech Mono',monospace;font-size:9px;width:30px;
+  text-align:right;flex-shrink:0}
+
+/* ===== SCENARIO BUTTONS ===== */
+.scgroup{display:flex;gap:4px;flex-wrap:wrap}
+.scbtn{padding:4px 9px;border-radius:3px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);font-family:'Share Tech Mono',monospace;
+  font-size:10px;cursor:pointer;transition:.15s;letter-spacing:.5px}
+.scbtn:hover{border-color:var(--cyan);color:var(--cyan)}
+.scbtn.active{border-color:var(--amber);color:var(--amber);background:var(--amber-dim)}
+
+/* ===== CONTROL BUTTONS ===== */
+.ctrlrow{display:flex;gap:6px}
+.cbtn{padding:8px 0;border-radius:4px;border:1px solid;font-family:'Rajdhani',sans-serif;
+  font-weight:700;font-size:12px;letter-spacing:2px;cursor:pointer;transition:.2s;flex:1;text-align:center}
+.cbtn.primary{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
+.cbtn.primary:hover{background:rgba(6,182,212,.2)}
+.cbtn.primary.running{background:var(--cyan);color:var(--bg)}
+.cbtn.secondary{border-color:var(--border);color:var(--muted);background:transparent}
+.cbtn.secondary:hover{border-color:var(--amber);color:var(--amber)}
+
+/* ===== MAP ===== */
+.mapwrap{position:relative;background:#060c18;overflow:hidden}
+#mapCanvas{width:100%;height:100%;display:block}
+.mapovl{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:5px;pointer-events:none}
+.mbadge{background:rgba(6,9,20,.85);border:1px solid var(--border);border-radius:3px;
+  padding:3px 9px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--cyan)}
+/* ── NEW: layer controls (top-right of map) ── */
+.layer-ctrl{position:absolute;top:12px;right:12px;display:flex;gap:4px;z-index:5}
+.lbtn{padding:3px 8px;border-radius:3px;border:1px solid var(--border2);
+  background:rgba(6,9,20,.85);color:var(--muted);font-family:'Share Tech Mono',monospace;
+  font-size:9px;cursor:pointer;transition:.15s;letter-spacing:.5px}
+.lbtn:hover{border-color:var(--cyan2);color:var(--cyan)}
+.lbtn.active{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
+.lbtn.danger{border-color:var(--border2);color:var(--muted)}
+.lbtn.danger:hover{border-color:var(--red);color:var(--red)}
+.mctrl{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:7px}
+
+/* ===== ANOMALY ROW ===== */
+.arow{background:var(--bg2);border-radius:3px;padding:8px 11px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  display:flex;align-items:center;justify-content:space-between}
+.arow span:last-child{font-weight:500}
+
+/* ===== ALERT LOG ===== */
+.alertlog{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.alitem{background:var(--bg2);border-left:2.5px solid;border-radius:2px;
+  padding:5px 8px;font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text)}
+.altime{color:var(--muted);font-size:9px;margin-bottom:2px}
+.altype{font-weight:500}
+
+/* ===== RISK FACTOR BARS ===== */
+.rfrow{display:flex;align-items:center;gap:8px;font-family:'Share Tech Mono',monospace;font-size:10px}
+.rflabel{color:var(--muted);width:56px;flex-shrink:0}
+.rftrack{flex:1;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden}
+.rfbar{height:100%;border-radius:2px}
+.rfval{width:32px;text-align:right;flex-shrink:0}
+
+/* ===== FOOTER / TIMELINE ===== */
+.ftop{display:flex;align-items:center;justify-content:space-between}
+.ftitle{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:600;letter-spacing:3px;color:var(--muted)}
+.fleg{display:flex;gap:14px}
+.flegitem{display:flex;align-items:center;gap:4px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--muted)}
+.flegdot{width:8px;height:8px;border-radius:50%}
+#timelineCanvas{width:100%;height:78px;display:block;margin-top:2px}
+
+/* ===== RECOMMENDATIONS ===== */
+#reclist{font-size:11px;color:var(--muted2);line-height:1.7;font-family:'Share Tech Mono',monospace}
+#reclist div{padding:1px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🛡 GEO<b>GUARDIAN</b></div>
+  <div class="version">v3.0 · SIH 2025</div>
+  <div class="hstatus" style="margin-left:8px">
+    <div class="hpulse ok" id="hpulse"></div>
+    <span id="hstatustxt">SYSTEM NOMINAL</span>
+  </div>
+  <!-- NEW: session statistics chip -->
+  <div class="sess-chip" id="sessChip" style="margin-left:8px">
+    SESSIONS <b id="sessCount">0</b> &nbsp;·&nbsp; ANOMALIES <b id="anomCount">0</b>
+  </div>
+  <div class="hright">
+    <div class="hloc">ERNAKULAM DISTRICT, KERALA, IN</div>
+    <div class="htime" id="hclock">--:--:--</div>
+    <button class="sosbtn" id="sosbtn" onclick="manualSOS()">⚠ SOS</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="panel">
+    <div class="ptitle">TOURIST PROFILE</div>
+
+    <div class="frow">
+      <div class="fg">
+        <label>AGE</label>
+        <input type="number" id="age" value="28" min="18" max="80" oninput="updateProfile()">
+      </div>
+      <div class="fg">
+        <label>GROUP SIZE</label>
+        <input type="number" id="grp" value="2" min="1" max="10" oninput="updateProfile()">
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>GENDER</label>
+      <select id="gender" onchange="updateProfile()">
+        <option value="M">Male</option>
+        <option value="F">Female</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label>LOCATION / DESTINATION</label>
+      <select id="location" onchange="updateProfile()">
+        <option value="Marine Drive">Marine Drive (Low Risk)</option>
+        <option value="Fort Kochi">Fort Kochi (Low Risk)</option>
+        <option value="Mattancherry">Mattancherry (Low-Mod)</option>
+        <option value="Cherai Beach">Cherai Beach (Moderate)</option>
+        <option value="Hill Palace">Hill Palace (Low Risk)</option>
+        <option value="Vembanad Lake">Vembanad Lake (Moderate)</option>
+        <option value="Kalady">Kalady (Moderate)</option>
+        <option value="Athirappilly">Athirappilly Falls (High Risk)</option>
+        <option value="Munnar">Munnar (High Risk)</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label>HEALTH CONDITIONS</label>
+      <select id="health" onchange="updateProfile()">
+        <option value="none">None</option>
+        <option value="asthma">Asthma</option>
+        <option value="diabetes">Diabetes</option>
+        <option value="hypertension">Hypertension</option>
+        <option value="heart_disease">Heart Disease</option>
+        <option value="mobility_issues">Mobility Issues</option>
+        <option value="elderly_frail">Elderly / Frail</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label>TOURIST TYPE</label>
+      <select id="ttype" onchange="updateProfile()">
+        <option value="domestic">Domestic (Indian)</option>
+        <option value="foreign">Foreign Tourist</option>
+      </select>
+    </div>
+
+    <div class="riskbox">
+      <div class="rlabel">STATIC PROFILE RISK</div>
+      <div class="rval" id="sv">0.31</div>
+      <div class="rbadge" id="sbdg">LOW RISK</div>
+    </div>
+
+    <div>
+      <div class="rlabel" style="margin-bottom:8px">RISK FACTOR BREAKDOWN</div>
+      <div style="display:flex;flex-direction:column;gap:6px" id="rfbars"></div>
+    </div>
+
+    <div>
+      <div class="rlabel" style="margin-bottom:6px">ANOMALY SCENARIO</div>
+      <div class="scgroup" id="scgroup">
+        <button class="scbtn active" onclick="setScenario('normal',this)">NORMAL</button>
+        <button class="scbtn" onclick="setScenario('deviation',this)">DEVIATION</button>
+        <button class="scbtn" onclick="setScenario('stall',this)">STALL</button>
+        <button class="scbtn" onclick="setScenario('loop',this)">LOOP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: MAP -->
+  <div class="mapwrap">
+    <canvas id="mapCanvas"></canvas>
+
+    <!-- Top-left coordinate badges (existing) -->
+    <div class="mapovl">
+      <div class="mbadge" id="cb1">LAT: 9.9312 · LON: 76.2673</div>
+      <div class="mbadge" id="cb2">SPEED: 0.0 km/h</div>
+      <div class="mbadge" id="cb3">TRACK: 0 pts</div>
+      <div class="mbadge" id="cb4" style="color:var(--green)">PATH: NORMAL</div>
+    </div>
+
+    <!-- NEW: Layer controls (top-right) -->
+    <div class="layer-ctrl">
+      <button class="lbtn active" id="lbtnHeat" onclick="toggleLayer('heat')" title="Toggle risk heatmap">🌡 HEAT</button>
+      <button class="lbtn" id="lbtnZones" onclick="toggleLayer('zones')" title="Toggle cluster zones">⬡ ZONES</button>
+      <button class="lbtn danger" onclick="clearHistory()" title="Clear session history">✕ CLR</button>
+    </div>
+
+    <div class="mctrl">
+      <button class="cbtn primary" id="startbtn" onclick="toggleSim()">▶ START TRACKING</button>
+      <button class="cbtn secondary" onclick="resetAll()">↺ RESET</button>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="panel right">
+    <div class="ptitle">REAL-TIME RISK MONITOR</div>
+
+    <div class="riskbox big">
+      <div class="rlabel">COMBINED RISK SCORE</div>
+      <div class="rval lg" id="cv">0.31</div>
+      <div class="rbadge" id="cbdg">LOW RISK</div>
+    </div>
+
+    <!-- Score bars: static, lstm, combined -->
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div class="sbrow">
+        <div class="sblabels"><span style="color:var(--muted)">Static Profile</span><span id="sbsv" style="color:var(--amber)">0.31</span></div>
+        <div class="sbtrack"><div class="sbfill" id="sbsbar" style="background:var(--amber);width:31%"></div></div>
+      </div>
+      <div class="sbrow">
+        <div class="sblabels"><span style="color:var(--muted)">LSTM Anomaly</span><span id="sblv" style="color:var(--cyan)">0.05</span></div>
+        <div class="sbtrack"><div class="sbfill" id="sblbar" style="background:var(--cyan);width:5%"></div></div>
+      </div>
+      <div class="sbrow">
+        <div class="sblabels"><span style="color:var(--muted)">Combined Score</span><span id="sbcomv" style="color:var(--purple)">0.31</span></div>
+        <div class="sbtrack"><div class="sbfill" id="sbcombar" style="background:var(--purple);width:31%"></div></div>
+      </div>
+    </div>
+
+    <!-- NEW: Confidence display -->
+    <div class="conf-box">
+      <div class="conf-header">
+        <span class="conf-title">MODEL CONFIDENCE</span>
+        <span class="conf-badge" id="confBadge" style="color:var(--green);background:var(--green-dim)">HIGH</span>
+      </div>
+      <div class="conf-pct" id="confPct" style="color:var(--green)">95%</div>
+      <div class="conf-desc" id="confDesc">Both models in strong agreement</div>
+      <div class="conf-track">
+        <div class="conf-fill" id="confBar" style="width:95%;background:var(--green)"></div>
+      </div>
+    </div>
+
+    <!-- NEW: AI Explanation -->
+    <div class="ptitle">AI EXPLANATION</div>
+    <div class="explain-box">
+      <div class="explain-summary" id="explainSummary">Configure a tourist profile to see AI-driven risk explanation.</div>
+      <div id="explainFactors"></div>
+    </div>
+
+    <!-- Anomaly info rows -->
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <div class="arow">
+        <span style="color:var(--muted)">ANOMALY TYPE</span>
+        <span id="atype" style="color:var(--green)">NONE</span>
+      </div>
+      <div class="arow">
+        <span style="color:var(--muted)">RECON ERROR</span>
+        <span id="reconerr" style="color:var(--cyan)">—</span>
+      </div>
+      <div class="arow">
+        <span style="color:var(--muted)">TRACK DURATION</span>
+        <span id="dur">00:00</span>
+      </div>
+      <div class="arow">
+        <span style="color:var(--muted)">SOS THRESHOLD</span>
+        <span style="color:var(--red)">≥ 0.75</span>
+      </div>
+    </div>
+
+    <div class="ptitle">ALERT LOG</div>
+    <div class="alertlog" id="alog">
+      <div style="color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;text-align:center;padding:10px">System nominal — no alerts</div>
+    </div>
+
+    <div class="ptitle" style="margin-top:2px">RECOMMENDATIONS</div>
+    <div id="reclist"><div style="color:var(--muted)">Configure profile above</div></div>
+  </div>
+
+</div>
+
+<!-- FOOTER TIMELINE -->
+<div class="foot">
+  <div class="ftop">
+    <div class="ftitle">RISK TIMELINE</div>
+    <div class="fleg">
+      <div class="flegitem"><div class="flegdot" style="background:var(--amber)"></div>Static</div>
+      <div class="flegitem"><div class="flegdot" style="background:var(--cyan)"></div>LSTM</div>
+      <div class="flegitem"><div class="flegdot" style="background:var(--purple)"></div>Combined</div>
+      <div class="flegitem"><div class="flegdot" style="background:var(--red)"></div>SOS Threshold</div>
+      <div class="flegitem"><div class="flegdot" style="background:var(--green);opacity:.7"></div>Confidence</div>
+    </div>
+  </div>
+  <canvas id="timelineCanvas"></canvas>
+</div>
+
+<script>
+// ======================== CONFIG ========================
+const LOCS = {
+  'Marine Drive':    {risk:.18,lat:9.9812,lon:76.2803},
+  'Fort Kochi':      {risk:.22,lat:9.9625,lon:76.2421},
+  'Mattancherry':    {risk:.25,lat:9.9564,lon:76.2605},
+  'Cherai Beach':    {risk:.28,lat:10.1365,lon:76.1893},
+  'Hill Palace':     {risk:.22,lat:9.9456,lon:76.3289},
+  'Vembanad Lake':   {risk:.30,lat:9.8200,lon:76.3505},
+  'Kalady':          {risk:.35,lat:10.1624,lon:76.4436},
+  'Athirappilly':    {risk:.45,lat:10.2828,lon:76.5694},
+  'Munnar':          {risk:.40,lat:10.0892,lon:77.0595}
+};
+const HEALTH = {none:0,asthma:.4,diabetes:.5,hypertension:.4,heart_disease:.8,mobility_issues:.7,elderly_frail:.9};
+const LANDMARKS = [
+  {n:'Fort Kochi',    lat:9.9625,lon:76.2421,t:'s'},
+  {n:'Marine Drive',  lat:9.9812,lon:76.2803,t:'s'},
+  {n:'Mattancherry',  lat:9.9564,lon:76.2605,t:'m'},
+  {n:'Ernakulam Jn', lat:9.9816,lon:76.2915,t:'s'},
+  {n:'Cherai Beach',  lat:10.136,lon:76.189,t:'m'},
+  {n:'Hill Palace',   lat:9.9456,lon:76.3289,t:'s'},
+  {n:'Vembanad',      lat:9.820,lon:76.350,t:'m'},
+  {n:'Kalady',        lat:10.162,lon:76.443,t:'h'},
+];
+
+// Map bounds (Ernakulam region)
+const LAT0=9.72,LAT1=10.22,LON0=76.15,LON1=76.65;
+
+// ======================== STATE ========================
+let profile={age:28,gender:'M',grp:2,loc:'Marine Drive',health:'none',foreign:false};
+let sRisk=0, lRisk=0.05, cRisk=0;
+let path=[], rHist=[], alerts=[];
+let simRun=false, simInt=null, step=0, scenario='normal';
+let anomaly=false, anomalyAt=18, sosTriggered=false, startMs=null;
+let anim=null;
+
+// ── NEW: session history & map layer state ──────────────
+// Each entry: {lat, lon, location, score, isAnomaly}
+const sessionHistory = [];
+// Per-location aggregates for clustering
+const locationAgg = {};
+// Heatmap point buffer (capped at 400 for performance)
+const heatPts = [];
+const HEAT_MAX = 400;
+// Layer toggle flags
+let showHeat  = true;
+let showZones = true;
+// Counters for header chip
+let totalSessions = 0;
+let totalAnomalies = 0;
+
+// ======================== STATIC RISK ========================
+
+function getRiskFactors(p) {
+  const ageR = (p.age<25||p.age>65)?0.65:0.3;
+  const grpR = p.grp===1?0.7:p.grp===2?0.4:0.2;
+  const genR = p.gender==='F'?(p.grp===1?0.8:0.6):0.3;
+  const hlR  = HEALTH[p.health]||0;
+  const locR = (LOCS[p.loc]||{risk:.35}).risk;
+  return {Age:ageR,Group:grpR,Gender:genR,Health:hlR,Location:locR};
+}
+
+// ======================== GPS GENERATOR ========================
+function nextPt() {
+  const last = path.length>0 ? path[path.length-1] : {lat:9.9312,lon:76.2673};
+  let dLat, dLon;
+  if(scenario==='deviation'&&anomaly){
+    if(step===anomalyAt){dLat=(Math.random()>.5?1:-1)*(0.007+Math.random()*0.005);dLon=(Math.random()>.5?1:-1)*(0.007+Math.random()*0.005);}
+    else{dLat=(Math.random()-.5)*.0008;dLon=(Math.random()-.5)*.0008;}
+  } else if(scenario==='stall'&&anomaly){
+    dLat=(Math.random()-.5)*.00004;dLon=(Math.random()-.5)*.00004;
+  } else if(scenario==='loop'&&anomaly){
+    const t=(step-anomalyAt)*.35;dLat=Math.sin(t)*.0018;dLon=Math.cos(t)*.0018;
+  } else {
+    dLat=(Math.random()-.4)*.0007+.00025;dLon=(Math.random()-.4)*.0007+.00015;
+  }
+  return {lat:last.lat+dLat,lon:last.lon+dLon};
+}
+
+//=================UI Helpers===================================
+function updateConfidenceFromAPI(res) {
+  document.getElementById('confPct').textContent = res.confidence_pct + '%';
+  document.getElementById('confBadge').textContent = res.confidence_label;
+}
+
+function updateExplanationFromAPI(res) {
+  document.getElementById('explainSummary').textContent = res.explanation.summary;
+
+  document.getElementById('explainFactors').innerHTML =
+    res.explanation.factors.map((f,i)=>`
+      <div class="explain-factor">
+        <span>${i+1}</span>
+        <span>${f.label}</span>
+        <span>${f.contribution}</span>
+      </div>
+    `).join('');
+}
+
+// ======================== SIMULATION ========================
+function toggleSim(){
+  if(simRun){pauseSim();}else{startSim();}
+}
+function startSim(){
+  simRun=true;
+  if(!startMs)startMs=Date.now();
+  anomalyAt=14+Math.floor(Math.random()*8);
+  document.getElementById('startbtn').textContent='⏸ PAUSE';
+  document.getElementById('startbtn').classList.add('running');
+  simInt=setInterval(tick,700);
+  addAlert('INFO','Tracking session started','var(--cyan)');
+}
+function pauseSim(){
+  simRun=false;clearInterval(simInt);
+  document.getElementById('startbtn').textContent='▶ RESUME';
+  document.getElementById('startbtn').classList.remove('running');
+}
+function resetAll(){
+  pauseSim();simRun=false;step=0;path=[];rHist=[];alerts=[];
+  anomaly=false;startMs=null;sosTriggered=false;lRisk=0.05;
+  document.getElementById('startbtn').textContent='▶ START TRACKING';
+  document.getElementById('startbtn').classList.remove('running');
+  document.getElementById('sosbtn').classList.remove('fired');
+  document.getElementById('hpulse').className='hpulse ok';
+  document.getElementById('hstatustxt').textContent='SYSTEM NOMINAL';
+  document.getElementById('dur').textContent='00:00';
+  document.getElementById('atype').textContent='NONE';
+  document.getElementById('atype').style.color='var(--green)';
+  document.getElementById('reconerr').textContent='—';
+  document.getElementById('cb4').style.color='var(--green)';
+  document.getElementById('cb4').textContent='PATH: NORMAL';
+  document.getElementById('alog').innerHTML='<div style="color:var(--muted);font-family:\'Share Tech Mono\',monospace;font-size:10px;text-align:center;padding:10px">System nominal — no alerts</div>';
+  cRisk=sRisk;updateUI();drawTimeline();
+}
+
+let isFetching = false;
+
+async function tick() {
+  // prevent overlapping API calls
+  if (isFetching) return;
+  isFetching = true;
+
+  try {
+    step++;
+    anomaly = (scenario !== 'normal' && step >= anomalyAt);
+
+    const pt = nextPt();
+    path.push(pt);
+    if (path.length > 120) path.shift();
+
+    // ================= API CALL =================
+    const apiRes = await fetchAssessment(profile, path);
+
+    if (apiRes) {
+      sRisk = apiRes.static_score;
+      lRisk = apiRes.lstm_score;
+      cRisk = apiRes.combined_score;
+
+      // confidence (from API)
+      updateConfidenceFromAPI(apiRes);
+
+      // explanation (from API)
+      updateExplanationFromAPI(apiRes);
+
+      // anomaly type (API-driven)
+      document.getElementById('atype').textContent =
+        apiRes.anomaly_type ? apiRes.anomaly_type.toUpperCase() : 'NONE';
+    }
+
+    // ================= HISTORY =================
+    rHist.push({
+      s: sRisk,
+      l: lRisk,
+      c: cRisk,
+      conf: apiRes ? apiRes.confidence : 0.8   // fallback
+    });
+
+    if (rHist.length > 80) rHist.shift();
+
+    // ================= SESSION STORE =================
+    recordSession(pt.lat, pt.lon, profile.loc, cRisk, anomaly);
+
+    // ================= COORD UI =================
+    const sp = (() => {
+      if (path.length < 2) return 0;
+      const p = path[path.length - 1];
+      const q = path[path.length - 2];
+      const d = Math.sqrt((p.lat - q.lat) ** 2 + (p.lon - q.lon) ** 2) * 111000;
+      return (d / 0.7 * 3.6);
+    })();
+
+    document.getElementById('cb1').textContent =
+      `LAT: ${pt.lat.toFixed(4)} · LON: ${pt.lon.toFixed(4)}`;
+    document.getElementById('cb2').textContent =
+      `SPEED: ${sp.toFixed(1)} km/h`;
+    document.getElementById('cb3').textContent =
+      `TRACK: ${path.length} pts`;
+
+    // ================= TIMER =================
+    const el = Math.floor((Date.now() - startMs) / 1000);
+    document.getElementById('dur').textContent =
+      String(Math.floor(el / 60)).padStart(2, '0') + ':' +
+      String(el % 60).padStart(2, '0');
+
+    // ================= ANOMALY UI =================
+    if (anomaly) {
+      document.getElementById('atype').textContent = '⚠ ' + scenario.toUpperCase();
+      document.getElementById('atype').style.color = 'var(--red)';
+      document.getElementById('cb4').textContent = 'PATH: ANOMALY';
+      document.getElementById('cb4').style.color = 'var(--red)';
+    } else {
+      document.getElementById('atype').textContent = 'NORMAL';
+      document.getElementById('atype').style.color = 'var(--green)';
+      document.getElementById('cb4').textContent = 'PATH: NORMAL';
+      document.getElementById('cb4').style.color = 'var(--green)';
+    }
+
+    document.getElementById('reconerr').textContent = lRisk.toFixed(4);
+
+    // ================= ALERTS =================
+    if (anomaly && step === anomalyAt) {
+      addAlert(
+        'ANOMALY',
+        `Path ${scenario} detected — LSTM: ${lRisk.toFixed(3)}`,
+        'var(--amber)'
+      );
+    }
+
+    if (lRisk > 0.65 && step % 4 === 0) {
+      addAlert(
+        'LSTM',
+        `High reconstruction error: ${lRisk.toFixed(3)}`,
+        'var(--red)'
+      );
+    }
+
+    if (cRisk > 0.75 && !sosTriggered) {
+      sosTriggered = true;
+      triggerSOS();
+    }
+
+    // ================= FINAL UI =================
+    updateUI();
+    drawTimeline();
+
+  } catch (err) {
+    console.error("Tick error:", err);
+  } finally {
+    // ALWAYS reset
+    isFetching = false;
+  }
+}
+
+function triggerSOS(){
+  document.getElementById('sosbtn').classList.add('fired');
+  document.getElementById('hpulse').className='hpulse alert';
+  document.getElementById('hstatustxt').textContent='⚠ ALERT — SOS TRIGGERED';
+  addAlert('SOS',`EMERGENCY — Combined risk ${cRisk.toFixed(3)} exceeded threshold`,'var(--red)');
+}
+function manualSOS(){
+  document.getElementById('sosbtn').classList.toggle('fired');
+  addAlert('MANUAL','SOS manually activated by operator','var(--red)');
+}
+
+function addAlert(type,msg,col){
+  const t=new Date().toLocaleTimeString('en-US',{hour12:false});
+  alerts.unshift({type,msg,col,t});if(alerts.length>30)alerts.pop();
+  document.getElementById('alog').innerHTML=alerts.map(a=>
+    `<div class="alitem" style="border-color:${a.col}"><div class="altime">${a.t}</div><span class="altype" style="color:${a.col}">[${a.type}]</span> ${a.msg}</div>`
+  ).join('');
+}
+
+// ======================== UI UPDATE ========================
+function col(v){return v>0.65?'var(--red)':v>0.35?'var(--amber)':'var(--green)'}
+function lvl(v){return v>0.65?'HIGH RISK':v>0.35?'MODERATE':'LOW RISK'}
+function lbg(v){return v>0.65?'var(--red-dim)':v>0.35?'var(--amber-dim)':'var(--green-dim)'}
+
+function updateUI(){
+  // Static risk box
+  const sv=document.getElementById('sv');
+  sv.textContent=sRisk.toFixed(3);sv.style.color=col(sRisk);
+  const sb=document.getElementById('sbdg');
+  sb.textContent=lvl(sRisk);sb.style.color=col(sRisk);sb.style.background=lbg(sRisk);
+
+  // Combined box
+  const cv=document.getElementById('cv');
+  cv.textContent=cRisk.toFixed(3);cv.style.color=col(cRisk);
+  const cb=document.getElementById('cbdg');
+  cb.textContent=lvl(cRisk);cb.style.color=col(cRisk);cb.style.background=lbg(cRisk);
+
+  // Bars
+  const pct=v=>Math.min(100,v*100).toFixed(1)+'%';
+  document.getElementById('sbsbar').style.width=pct(sRisk);
+  document.getElementById('sbsv').textContent=sRisk.toFixed(3);
+  document.getElementById('sblbar').style.width=pct(lRisk);
+  document.getElementById('sblv').textContent=lRisk.toFixed(3);
+  document.getElementById('sbcombar').style.width=pct(cRisk);
+  document.getElementById('sbcomv').textContent=cRisk.toFixed(3);
+
+
+  // Risk factor bars
+  drawRFBars();
+
+  // Recommendations
+  let recs=[];
+  if(cRisk>0.65){
+    recs=['Travel with a larger group','Choose safer accommodation zones','Avoid night-time movement','Keep emergency contacts on standby','Enable SOS auto-trigger'];
+  } else if(cRisk>0.35){
+    recs=['Stay aware of your surroundings','Share itinerary with trusted contacts','Avoid isolated areas after dark'];
+  } else {
+    recs=['Follow standard safety precautions','Enjoy your visit responsibly'];
+  }
+  document.getElementById('reclist').innerHTML=recs.map(r=>`<div>• ${r}</div>`).join('');
+}
+
+function drawRFBars(){
+  const factors=getRiskFactors(profile);
+  const container=document.getElementById('rfbars');
+  container.innerHTML=Object.entries(factors).map(([k,v])=>{
+    const c=v>0.6?'var(--red)':v>0.35?'var(--amber)':'var(--green)';
+    return `<div class="rfrow">
+      <span class="rflabel">${k}</span>
+      <div class="rftrack"><div class="rfbar" style="width:${(v*100).toFixed(0)}%;background:${c}"></div></div>
+      <span class="rfval" style="color:${c}">${v.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+}
+
+function updateProfile(){
+  profile={
+    age:parseInt(document.getElementById('age').value)||28,
+    gender:document.getElementById('gender').value,
+    grp:parseInt(document.getElementById('grp').value)||2,
+    loc:document.getElementById('location').value,
+    health:document.getElementById('health').value,
+    foreign:document.getElementById('ttype').value==='foreign'
+  };
+  if(!simRun){cRisk=sRisk;lRisk=0.05;}
+  updateUI();
+}
+
+function setScenario(s,btn){
+  scenario=s;anomaly=false;
+  document.querySelectorAll('.scbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(!simRun) resetAll();
+}
+
+// =======================Adding API Driven Flow ==============================
+let lastApiCall = 0;
+
+async function fetchAssessment(profile, path) {
+  const now = Date.now();
+  if (now - lastApiCall < 800) return null; // debounce
+
+  lastApiCall = now;
+
+  const res = await fetch("http://localhost:8000/assess", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      age: profile.age,
+      gender: profile.gender === 'M' ? 'Male' : 'Female',
+      group_size: profile.grp,
+      location: profile.loc,
+      health_conditions: [profile.health],
+      is_foreign: profile.foreign,
+      gps_track: path.slice(-30).map(p => ({
+        lat: p.lat,
+        lon: p.lon,
+        timestamp: Date.now()/1000
+      }))
+    })
+  });
+
+  return await res.json();
+}
+
+// ======================== NEW: CONFIDENCE COMPUTATION ========================
+/**
+ * Mirrors the Python backend formula:
+ *   agreement = 1 - |static_score - lstm_score|
+ *   confidence = clip(agreement * 0.8 + 0.2, 0, 1)
+ * This gives minimum 20% even when models fully disagree,
+ * and rewards agreement exponentially toward 100%.
+ */
+
+function updateConfidence() {
+  // confidence now comes from backend API
+  // handled by updateConfidenceFromAPI()
+  return;
+}
+
+
+// ======================== NEW: AI EXPLANATION ========================
+/**
+ * Maps getRiskFactors() output to human-readable explanations,
+ * computes weighted contributions, and renders top-3 factors
+ * with a one-sentence narrative summary.
+ *
+ * Weights match the Python backend (RISK_WEIGHTS in geoguardian_v2.py):
+ *   age:0.17, group:0.20, gender:0.18, health:0.20, location:0.25
+ */
+const RF_WEIGHTS   = {Age:0.17, Group:0.20, Gender:0.18, Health:0.20, Location:0.25};
+
+const HEALTH_NAMES = {
+  none:'No health conditions', asthma:'Asthma', diabetes:'Diabetes',
+  hypertension:'Hypertension', heart_disease:'Heart disease',
+  mobility_issues:'Mobility impairment', elderly_frail:'Elderly/frail'
+};
+
+function computeExplanation(p, sR) {
+  const rawFactors = getRiskFactors(p);
+
+  // Build human-readable labels for each factor
+  const factorMeta = {
+    Age: {
+      label: p.age > 65
+        ? 'Senior traveler (65+)'
+        : p.age < 25 ? 'Young traveler (<25)' : 'Prime age group',
+    },
+    Group: {
+      label: p.grp === 1
+        ? 'Solo traveler'
+        : p.grp === 2 ? 'Pair of travelers' : `Group of ${p.grp}`,
+    },
+    Gender: {
+      label: (p.gender === 'F' && p.grp === 1)
+        ? 'Solo female travel'
+        : p.gender === 'F' ? 'Female traveler' : 'Male traveler',
+    },
+    Health: {
+      label: HEALTH_NAMES[p.health] || p.health.replace(/_/g,' '),
+    },
+    Location: {
+      label: (() => {
+        const r = (LOCS[p.loc]||{risk:.35}).risk;
+        return r>=.40 ? `${p.loc} (high-risk area)`
+             : r>=.25 ? `${p.loc} (moderate area)`
+                      : `${p.loc} (safe area)`;
+      })(),
+    },
+  };
+
+  // Compute weighted contribution for each factor
+  const contributions = Object.entries(rawFactors).map(([key, raw]) => ({
+    key,
+    label:        factorMeta[key]?.label || key,
+    value:        raw,
+    contribution: (RF_WEIGHTS[key] || 0) * raw,
+  }));
+
+  // Sort descending by contribution, take top 3
+  contributions.sort((a, b) => b.contribution - a.contribution);
+  const top3 = contributions.slice(0, 3).filter(f => f.contribution > 0.01);
+
+  // Build natural language summary
+  const names = top3.map(f => f.label.toLowerCase());
+  let summary;
+  if (sR > 0.65) {
+    summary = `⚠ High risk due to: ${names[0]}${names[1] ? ', '+names[1] : ''}${names[2] ? ', and '+names[2] : ''}.`;
+  } else if (sR > 0.35) {
+    summary = `Moderate risk — key factors: ${names[0]}${names[1] ? ' and '+names[1] : ''}.`;
+  } else {
+    summary = `Low risk profile. Primary factor: ${names[0] || 'all parameters within safe range'}.`;
+  }
+
+  return { summary, factors: top3 };
+}
+
+function updateExplanation(p, sR) {
+  const expl = computeExplanation(p, sR);
+
+  document.getElementById('explainSummary').textContent = expl.summary;
+
+  const maxContrib = Math.max(...expl.factors.map(f => f.contribution), 0.01);
+  document.getElementById('explainFactors').innerHTML = expl.factors.map((f, i) => {
+    const barWidth = ((f.contribution / maxContrib) * 100).toFixed(0);
+    const barColor = f.contribution > 0.12 ? 'var(--red)' : f.contribution > 0.07 ? 'var(--amber)' : 'var(--cyan)';
+    const valColor = barColor;
+    return `
+      <div class="explain-factor">
+        <span class="ef-rank" style="color:${valColor}">${i+1}</span>
+        <span class="ef-label" style="color:var(--muted2)" title="${f.label}">${f.label}</span>
+        <div class="ef-track">
+          <div class="ef-bar" style="width:${barWidth}%;background:${barColor}"></div>
+        </div>
+        <span class="ef-val" style="color:${valColor}">${f.contribution.toFixed(2)}</span>
+      </div>`;
+  }).join('');
+}
+
+
+// ======================== NEW: SESSION PERSISTENCE ========================
+/**
+ * Called on every tick().
+ * Accumulates data that feeds the heatmap and cluster zone visualisations.
+ * Acts as the JS equivalent of Python's SessionStore.record().
+ */
+function recordSession(lat, lon, location, score, isAnomaly) {
+  totalSessions++;
+  if (isAnomaly) totalAnomalies++;
+
+  // Update header chip
+  document.getElementById('sessCount').textContent = totalSessions;
+  document.getElementById('anomCount').textContent = totalAnomalies;
+
+  // Add heatmap point (FIFO bounded)
+  heatPts.push({ lat, lon, weight: score });
+  if (heatPts.length > HEAT_MAX) heatPts.shift();
+
+  // Accumulate per-location stats for clustering
+  if (!locationAgg[location]) {
+    locationAgg[location] = { scores: [], anomalies: 0, lat, lon };
+  }
+  locationAgg[location].scores.push(score);
+  if (isAnomaly) locationAgg[location].anomalies++;
+}
+
+function clearHistory() {
+  heatPts.length = 0;
+  Object.keys(locationAgg).forEach(k => delete locationAgg[k]);
+  totalSessions = 0; totalAnomalies = 0;
+  document.getElementById('sessCount').textContent = '0';
+  document.getElementById('anomCount').textContent = '0';
+  addAlert('SYS', 'Session history cleared', 'var(--muted)');
+}
+
+
+// ======================== NEW: MAP LAYER TOGGLES ========================
+function toggleLayer(name) {
+  if (name === 'heat') {
+    showHeat = !showHeat;
+    document.getElementById('lbtnHeat').classList.toggle('active', showHeat);
+  } else if (name === 'zones') {
+    showZones = !showZones;
+    document.getElementById('lbtnZones').classList.toggle('active', showZones);
+  }
+}
+
+
+// ======================== NEW: HEATMAP RENDERING ========================
+/**
+ * Draws a smooth radial gradient heatmap from accumulated heatPts.
+ *
+ * Colour ramp: green (weight=0) → amber (weight=0.5) → red (weight=1.0)
+ * Each point is a radial gradient blob; overlapping blobs blend naturally
+ * through the canvas painter's model (no special compositing needed).
+ *
+ * Performance: capped at HEAT_MAX=400 points; blobs are drawn at a fixed
+ * radius of ~40px and then optionally downsampled for older devices.
+ */
+function heatColor(weight, alpha) {
+  let r, g, b;
+  if (weight <= 0.5) {
+    const t = weight * 2;   // 0→1 from green to amber
+    r = Math.round(16  + (245 - 16)  * t);
+    g = Math.round(185 + (158 - 185) * t);
+    b = Math.round(129 * (1 - t));
+  } else {
+    const t = (weight - 0.5) * 2;   // 0→1 from amber to red
+    r = Math.round(245 + (239 - 245) * t);
+    g = Math.round(158 * (1 - t));
+    b = 0;
+  }
+  return `rgba(${r},${g},${b},${alpha.toFixed(2)})`;
+}
+
+function drawHeatmap(ctx, W, H) {
+  if (!showHeat || !window.heatmapData?.length) return;
+
+  window.heatmapData.forEach(pt => {
+    const { x, y } = toCanvas(pt.lat, pt.lon, W, H);
+
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, 40);
+    grad.addColorStop(0, 'rgba(239,68,68,0.35)');
+    grad.addColorStop(1, 'rgba(239,68,68,0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, 40, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+
+// ======================== NEW: CLUSTER ZONE RENDERING ========================
+/**
+ * Computes DBSCAN-equivalent clusters from locationAgg in JS.
+ *
+ * Since we can't run sklearn in the browser, we approximate DBSCAN:
+ *   • Each location with ≥1 visit becomes a candidate point.
+ *   • Locations within eps=0.5° haversine AND similar risk (Δ<0.25) are merged.
+ *   • Result is classified and drawn as a dashed zone circle on the map.
+ *
+ * For the production FastAPI backend, this function would instead call
+ * GET /clusters and render the response — same visual format.
+ */
+function computeClusterZones() {
+  const locs = Object.entries(locationAgg)
+    .filter(([, d]) => d.scores.length >= 1)
+    .map(([name, d]) => ({
+      name,
+      lat: d.lat,
+      lon: d.lon,
+      avgRisk: d.scores.reduce((s, v) => s + v, 0) / d.scores.length,
+      anomalyFreq: d.anomalies / d.scores.length,
+      count: d.scores.length,
+    }));
+
+  if (locs.length === 0) return [];
+
+  const visited = new Set();
+  const clusters = [];
+
+  locs.forEach((loc, i) => {
+    if (visited.has(i)) return;
+
+    // Find neighbours using a simple geo + risk distance metric
+    const neighbors = locs.filter((l, j) => {
+      if (j === i || visited.has(j)) return false;
+      const dlat = (l.lat - loc.lat) * 111000;
+      const dlon = (l.lon - loc.lon) * 111000 * Math.cos(loc.lat * Math.PI / 180);
+      const geoDist = Math.sqrt(dlat * dlat + dlon * dlon);
+      const riskDist = Math.abs(l.avgRisk - loc.avgRisk);
+      // eps in normalised space: geo/80000 + risk/0.5
+      return (geoDist / 80000 + riskDist / 0.5) < 0.5;
+    });
+
+    const members = [loc, ...neighbors];
+    members.forEach(m => visited.add(locs.indexOf(m)));
+
+    const avgRisk = members.reduce((s, m) => s + m.avgRisk, 0) / members.length;
+    const density = members.reduce((s, m) => s + m.count, 0);
+    const cType   = avgRisk >= 0.50 ? 'HIGH' : avgRisk >= 0.28 ? 'MODERATE' : 'LOW';
+    const cLabel  = {HIGH:'High Risk Zone', MODERATE:'Moderate Zone', LOW:'Safe Corridor'}[cType];
+    const cLon    = members.reduce((s, m) => s + m.lon, 0) / members.length;
+    const cLat    = members.reduce((s, m) => s + m.lat, 0) / members.length;
+
+    clusters.push({ type: cType, label: cLabel, avgRisk, density, centLat: cLat, centLon: cLon, locations: members });
+  });
+
+  return clusters;
+}
+
+function drawClusterZones(ctx, W, H) {
+  if (!showZones || !window.clusterData?.length) return;
+
+  window.clusterData.forEach(cl => {
+    const { x, y } = toCanvas(
+      cl.centroid.lat,
+      cl.centroid.lon,
+      W,
+      H
+    );
+
+    const radius = 35 + cl.density * 4;
+
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+
+    ctx.strokeStyle =
+      cl.cluster_type === "HIGH"
+        ? "rgba(239,68,68,0.8)"
+        : "rgba(245,158,11,0.8)";
+
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.font = '10px "Share Tech Mono"';
+    ctx.fillText(cl.label, x - 20, y - radius - 10);
+  });
+}
+
+
+// ======================== MAP CANVAS ========================
+
+
+// ======================== MAP CANVAS ========================
+function toCanvas(lat,lon,W,H){
+  return {
+    x:((lon-LON0)/(LON1-LON0))*W,
+    y:((LAT1-lat)/(LAT1-LAT0))*H
+  };
+}
+
+function drawMap(){
+  const canvas=document.getElementById('mapCanvas');
+  const wrap=canvas.parentElement;
+  canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+
+  // ── Background ──
+  ctx.fillStyle='#060c18';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = "rgba(6,182,212,0.08)";
+  ctx.font = '18px "Rajdhani"';
+  ctx.fillText("LIVE GEO-SPATIAL RISK MAP", 30, 40);
+
+  // ── Sea gradient (western Arabian Sea side) ──
+  const seaGrad=ctx.createLinearGradient(0,0,W*.35,0);
+  seaGrad.addColorStop(0,'rgba(6,30,70,.6)');
+  seaGrad.addColorStop(1,'rgba(6,30,70,0)');
+  ctx.fillStyle=seaGrad;ctx.fillRect(0,0,W,H);
+
+  // ── Grid ──
+  ctx.strokeStyle='rgba(30,45,69,.5)';ctx.lineWidth=1;
+  const gs=45;
+  for(let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // ── Range rings (from city center) ──
+  const ctr=toCanvas(9.9312,76.2673,W,H);
+  [.03,.06,.10].forEach(r=>{
+    const px=(r/(LON1-LON0))*W;
+    ctx.beginPath();ctx.arc(ctr.x,ctr.y,px,0,Math.PI*2);
+    ctx.strokeStyle='rgba(6,182,212,.08)';ctx.lineWidth=1;ctx.stroke();
+  });
+
+  // ── NEW: Heatmap layer (drawn under landmarks) ──
+  drawHeatmap(ctx, W, H);
+
+  // ── NEW: Cluster zones (drawn under landmarks) ──
+  drawClusterZones(ctx, W, H);
+
+  // ── Landmarks ──
+  LANDMARKS.forEach(lm=>{
+    const {x,y}=toCanvas(lm.lat,lm.lon,W,H);
+    if(x<0||x>W||y<0||y>H)return;
+    const c=lm.t==='s'?'rgba(16,185,129,.7)':lm.t==='m'?'rgba(245,158,11,.7)':'rgba(239,68,68,.7)';
+    ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.15)';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='rgba(226,232,240,.65)';ctx.font='9px "Share Tech Mono"';
+    ctx.fillText(lm.n,x+7,y+3);
+  });
+
+  // ── GPS Path ──
+  if(path.length>1){
+    for(let i=1;i<path.length;i++){
+      const p1=toCanvas(path[i-1].lat,path[i-1].lon,W,H);
+      const p2=toCanvas(path[i].lat,path[i].lon,W,H);
+      const isA=anomaly&&i>=(path.length-(step-anomalyAt));
+      ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);
+      ctx.strokeStyle=isA?'rgba(239,68,68,.85)':'rgba(6,182,212,.65)';
+      ctx.lineWidth=2;ctx.stroke();
+    }
+    // Path dots
+    path.forEach((p,i)=>{
+      const {x,y}=toCanvas(p.lat,p.lon,W,H);
+      const isA=anomaly&&i>=(path.length-(step-anomalyAt));
+      ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);
+      ctx.fillStyle=isA?'rgba(239,68,68,.8)':'rgba(6,182,212,.4)';ctx.fill();
+    });
+
+    // Current position marker with animated ring
+    const cur=path[path.length-1];
+    const {x,y}=toCanvas(cur.lat,cur.lon,W,H);
+    const pulse=(Date.now()%1500)/1500;
+    const rc=cRisk>0.65?'239,68,68':cRisk>0.35?'245,158,11':'6,182,212';
+    ctx.beginPath();ctx.arc(x,y,7+pulse*9,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(${rc},${0.5*(1-pulse)})`;ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);
+    ctx.fillStyle=`rgba(${rc},.95)`;ctx.fill();
+
+    // Anomaly zone indicator
+    if(anomaly){
+      ctx.beginPath();ctx.arc(x,y,24,0,Math.PI*2);
+      ctx.strokeStyle='rgba(239,68,68,.3)';ctx.lineWidth=2;
+      ctx.setLineDash([5,5]);ctx.stroke();ctx.setLineDash([]);
+    }
+  } else {
+    // Idle state: center dot + hint text
+    const {x,y}=toCanvas(9.9312,76.2673,W,H);
+    ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);
+    ctx.fillStyle='rgba(6,182,212,.5)';ctx.fill();
+    ctx.fillStyle='rgba(226,232,240,.4)';ctx.font='11px "Share Tech Mono"';
+    ctx.textAlign='center';ctx.fillText('Press START TRACKING to begin',W/2,H-36);ctx.textAlign='left';
+  }
+
+  // ── Map legend ──
+  const legY=H-18;
+  [{c:'rgba(16,185,129,.7)',t:'Safe'},{c:'rgba(245,158,11,.7)',t:'Mod'},{c:'rgba(239,68,68,.7)',t:'High'}].forEach((l,i)=>{
+    ctx.beginPath();ctx.arc(12+i*60,legY,4,0,Math.PI*2);ctx.fillStyle=l.c;ctx.fill();
+    ctx.fillStyle='rgba(100,116,139,.8)';ctx.font='9px "Share Tech Mono"';ctx.fillText(l.t,19+i*60,legY+3);
+  });
+
+  // Scale bar
+  ctx.strokeStyle='rgba(100,116,139,.6)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(W-86,H-16);ctx.lineTo(W-20,H-16);ctx.stroke();
+  ctx.fillStyle='rgba(100,116,139,.8)';ctx.font='9px "Share Tech Mono"';ctx.fillText('~5 km',W-82,H-20);
+}
+
+
+// ======================== TIMELINE ========================
+function drawTimeline(){
+  const canvas=document.getElementById('timelineCanvas');
+  const parent=canvas.parentElement;
+  canvas.width=parent.clientWidth-2;canvas.height=78;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  if(rHist.length<2){
+    ctx.fillStyle='rgba(100,116,139,.4)';ctx.font='11px "Share Tech Mono"';
+    ctx.textAlign='center';ctx.fillText('Start tracking to see live timeline',W/2,H/2);ctx.textAlign='left';
+    return;
+  }
+  const n=rHist.length, xStep=W/Math.max(n-1,1);
+
+  // Grid lines
+  ctx.strokeStyle='rgba(30,45,69,.6)';ctx.lineWidth=1;
+  [0.25,0.5,0.75].forEach(v=>{
+    const y=H-v*H;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+    ctx.fillStyle='rgba(100,116,139,.5)';ctx.font='8px "Share Tech Mono"';ctx.fillText(v.toFixed(2),2,y-2);
+  });
+
+  // SOS threshold
+  const ty=H-0.75*H;
+  ctx.strokeStyle='rgba(239,68,68,.5)';ctx.lineWidth=1;
+  ctx.setLineDash([5,4]);ctx.beginPath();ctx.moveTo(0,ty);ctx.lineTo(W,ty);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(239,68,68,.7)';ctx.font='8px "Share Tech Mono"';ctx.fillText('SOS',W-26,ty-3);
+
+  function drawLine(key,clr,lw){
+    ctx.beginPath();
+    rHist.forEach((d,i)=>{const x=i*xStep,y=H-d[key]*H;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.strokeStyle=clr;ctx.lineWidth=lw;ctx.stroke();
+  }
+
+  // ── NEW: Confidence band (shaded region behind main lines) ──
+  ctx.beginPath();
+  rHist.forEach((d, i) => {
+    const x = i * xStep;
+    const y = H - (d.conf || 0.9) * H;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = 'rgba(16,185,129,0.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  drawLine('s','rgba(245,158,11,.7)',1.5);
+  drawLine('l','rgba(6,182,212,.8)',1.5);
+  drawLine('c','rgba(139,92,246,.95)',2.2);
+
+  // Fill under combined
+  ctx.beginPath();
+  rHist.forEach((d,i)=>{const x=i*xStep,y=H-d.c*H;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo((n-1)*xStep,H);ctx.lineTo(0,H);ctx.closePath();
+  ctx.fillStyle='rgba(139,92,246,.06)';ctx.fill();
+}
+
+// ======================== CLOCK ========================
+function updateClock(){
+  document.getElementById('hclock').textContent=new Date().toLocaleTimeString('en-US',{hour12:false});
+}
+setInterval(updateClock,1000);updateClock();
+
+// ======================== ANIMATION LOOP ========================
+function animLoop(){
+  if(simRun||path.length>0) drawMap();
+  anim=requestAnimationFrame(animLoop);
+}
+
+// ======================== RESIZE ========================
+window.addEventListener('resize',()=>{drawMap();drawTimeline();});
+
+function startDataSync() {
+  setInterval(async () => {
+    try {
+      const clusters = await fetch("http://localhost:8000/clusters").then(r => r.json());
+      const heatmap  = await fetch("http://localhost:8000/heatmap").then(r => r.json());
+      const stats    = await fetch("http://localhost:8000/session/stats").then(r => r.json());
+
+      // ================= APPLY DATA =================
+
+      // 1. clusters → map zones
+      window.clusterData = clusters.clusters || [];
+
+      // 2. heatmap → points
+      window.heatmapData = heatmap.points || [];
+
+      // 3. stats → header
+      if (stats.summary) {
+        document.getElementById('sessCount').textContent = stats.summary.total || 0;
+        document.getElementById('anomCount').textContent =
+          Math.round((stats.summary.anomaly_rate || 0) * stats.summary.total);
+      }
+
+    } catch (err) {
+      console.error("Sync error:", err);
+    }
+  }, 3000);
+}
+// ======================== INIT ========================
+updateProfile();
+cRisk=sRisk;
+updateUI();
+drawMap();
+drawTimeline();
+
+startDataSync();  
+
+animLoop();
+</script>
+</body>
+</html>
